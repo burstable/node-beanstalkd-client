@@ -1,0 +1,9 @@
+beanstgalkd-client:
+  build: .
+  links:
+   - beanstalkd
+  volumes:
+    - .:/src/burstable-client
+
+beanstalkd:
+  image: schickling/beanstalkd
