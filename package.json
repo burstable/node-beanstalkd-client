@@ -41,7 +41,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/burstable/node-beanstalkd-client.js.git"
+    "url": "git+https://github.com/burstable/node-beanstalkd-client.git"
   },
   "keywords": [
     "beanstalkd",
@@ -50,7 +50,7 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/burstable/node-beanstalkd-client.js/issues"
+    "url": "https://github.com/burstable/node-beanstalkd-client/issues"
   },
-  "homepage": "https://github.com/burstable/node-beanstalkd-client.js#readme"
+  "homepage": "https://github.com/burstable/node-beanstalkd-client#readme"
 }

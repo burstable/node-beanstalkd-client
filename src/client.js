@@ -54,7 +54,7 @@ export default class BeanstalkdClient {
 }
 
 function makeCommand(writer, reader) {
-  return function (...args) {
+  var command = function (...args) {
     return new Promise((resolve, reject) => {
       this.readQueue.push(function (data) {
         return reader.handle(data, resolve, reject);
@@ -63,6 +63,11 @@ function makeCommand(writer, reader) {
       writer.handle(this.connection, ...args);
     });
   };
+
+  command.writer = writer;
+  command.reader = reader;
+
+  return command;
 }
 
 BeanstalkdClient.prototype.use = makeCommand(

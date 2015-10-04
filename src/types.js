@@ -5,10 +5,20 @@ export class Type {
   }
 
   validateInput(value) {
-    if (value) {
-      return true;
+    if (this.type === Buffer) {
+      return Buffer.isBuffer(value) || typeof value === 'string';
+    }
+    if (this.type === Number) {
+      return typeof value === 'number' || !isNaN(parseInt(value, 10));
+    }
+    if (this.type === String) {
+      return typeof value === 'string';
     }
     return true;
+  }
+
+  toString() {
+    return `${this.name}<${this.type.name}>`;
   }
 }
 
