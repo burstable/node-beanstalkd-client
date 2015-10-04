@@ -1,12 +1,13 @@
 {
   "name": "beanstalkd",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A beanstalkd client for Node.js with promises",
   "main": "lib/client.js",
   "dependencies": {
     "babel-runtime": "^5.8.25",
     "bluebird": "~2.5.3",
-    "debug": "^2.2.0"
+    "debug": "^2.2.0",
+    "js-yaml": "^3.4.2"
   },
   "devDependencies": {
     "babel": "^5.8.23",
@@ -34,7 +35,7 @@
     "cover": "NODE_PATH=src NODE_ENV=test istanbul cover _mocha -- $npm_package_options_mocha test/unit/*.test.js test/unit/**/*.test.js",
     "test": "npm run test-unit && npm run test-integration",
     "test-unit": "NODE_PATH=src NODE_ENV=test mocha $npm_package_options_mocha test/unit/*.test.js test/unit/**/*.test.js",
-    "test-integration": "docker-compose run burstable /bin/sh -c \"npm run test-integration-raw\"",
+    "test-integration": "docker-compose run client /bin/sh -c \"npm run test-integration-raw\"",
     "test-integration-raw": "NODE_ENV=test mocha $npm_package_options_mocha test/integration/*.test.js test/integration/**/*.test.js",
     "publish": "npm run test && publish"
   },
