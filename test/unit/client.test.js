@@ -2,14 +2,18 @@ import BeanstalkdClient from 'client';
 import {expect} from 'chai';
 import sinon from 'sinon';
 import net from 'net';
+import {EventEmitter} from 'events';
 
 describe('BeanstalkdClient', function () {
   beforeEach(function () {
     this.sinon = sinon.sandbox.create();
 
-    this.connectionStub = {
-      on: this.sinon.spy()
-    };
+    this.connectionStub = new EventEmitter();
+    this.sinon.spy(this.connectionStub, 'on');
+    this.sinon.spy(this.connectionStub, 'once');
+    this.sinon.spy(this.connectionStub, 'removeListener');
+    this.connectionStub.write = this.sinon.stub();
+
     this.createConnectionStub = this.sinon.stub(net, 'createConnection').returns(this.connectionStub);
   });
 
@@ -65,19 +69,59 @@ describe('BeanstalkdClient', function () {
 
     it('should proxy calls to the connection', function () {
       var event
-        , args;
+        , callback;
 
       event = Math.random().toString();
-      args = [Math.random().toString(), Math.random().toString()];
+      callback = function() {};
 
-      this.client.on(event, ...args);
-      expect(this.connectionStub.on).to.have.been.calledWith(event, ...args);
+      this.client.on(event, callback);
+      expect(this.connectionStub.on).to.have.been.calledWith(event, callback);
+    });
+  });
 
-      event = Math.random().toString();
-      args = [Math.random().toString()];
+  describe('commands', function () {
+    it('should reject call if connection closes during command', function () {
+      let promise
+        , client;
 
-      this.client.on(event, ...args);
-      expect(this.connectionStub.on).to.have.been.calledWith(event, ...args);
+      client = new BeanstalkdClient(Math.random().toString(), Math.floor(Math.random() * 9999));
+      client.connect();
+      this.connectionStub.emit('connect');
+
+      promise = client.watch(Math.random().toString()).then(function() {
+        return client.reserve();
+      });
+
+      this.connectionStub.emit('close');
+
+      return expect(promise).to.be.rejectedWith('CLOSED').then(() => {
+        expect(this.connectionStub.removeListener).to.have.been.calledWith('close');
+        expect(this.connectionStub.removeListener).to.have.been.calledWith('error');
+      });
+    });
+
+    it('should reject call if connection has an error during command', function () {
+      let promise
+        , client
+        , error = Math.random().toString();
+
+      client = new BeanstalkdClient(Math.random().toString(), Math.floor(Math.random() * 9999));
+      client.connect();
+      this.connectionStub.emit('connect');
+
+      promise = client.watch(Math.random().toString()).then(function() {
+        return client.reserve();
+      });
+
+      expect(this.connectionStub.listenerCount('close')).to.equal(2);
+      expect(this.connectionStub.listenerCount('error')).to.equal(2);
+
+      this.connectionStub.emit('error', error);
+
+      return expect(promise).to.be.rejectedWith(error).then(() => {
+        expect(this.connectionStub.listenerCount('close')).to.equal(1);
+        expect(this.connectionStub.listenerCount('error')).to.equal(1);
+      });
     });
   });
 });

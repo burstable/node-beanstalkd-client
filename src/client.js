@@ -37,6 +37,7 @@ export default class BeanstalkdClient {
       connection.on('close', () => {
         debug('connection closed');
         this.closed = true;
+        this.connection = null;
       });
     });
   }
@@ -55,12 +56,25 @@ export default class BeanstalkdClient {
 
 function makeCommand(writer, reader) {
   var command = function (...args) {
+    var onConnectionEnded
+      , connection = this.connection;
+
     return new Promise((resolve, reject) => {
+      onConnectionEnded = function (error) {
+        reject(error || 'CLOSED');
+      };
+
+      connection.once('close', onConnectionEnded);
+      connection.once('error', onConnectionEnded);
+
       this.readQueue.push(function (data) {
         return reader.handle(data, resolve, reject);
       });
 
-      writer.handle(this.connection, ...args);
+      writer.handle(connection, ...args);
+    }).finally(() => {
+      connection.removeListener('close', onConnectionEnded);
+      connection.removeListener('error', onConnectionEnded);
     });
   };
 
