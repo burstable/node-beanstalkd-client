@@ -32,7 +32,6 @@ describe('types', function () {
 
         expect(type.validateInput(Math.floor(Math.random() * 9999))).to.equal(true);
         expect(type.validateInput(Math.floor(Math.random() * 9999).toString())).to.equal(true);
-        expect(type.validateInput(new Buffer(1))).to.equal(false);
         expect(type.validateInput({})).to.equal(false);
       });
 

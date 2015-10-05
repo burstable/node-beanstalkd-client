@@ -9,6 +9,10 @@ export default class ReadQueue {
     });
   }
 
+  get length() {
+    return this.queue.length;
+  }
+
   push(callback) {
     this.queue.push(callback);
   }

@@ -52,5 +52,34 @@ describe('BeanstalkdClient', function () {
         ]);
       });
     });
+
+    it('should be able to put and reserve a job', function () {
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      values[Math.random().toString()] = Math.random().toString();
+      values[Math.random().toString()] = Math.random().toString();
+      values[Math.random().toString()] = Math.random().toString();
+      values[Math.random().toString()] = Math.random().toString();
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return this.client.put(0, 0, 60, JSON.stringify(values)).then((putId) => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(putId).to.equal(reserveId);
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          });
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
   });
 });

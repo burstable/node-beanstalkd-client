@@ -44,8 +44,7 @@
     "url": "git+https://github.com/burstable/node-beanstalkd-client.git"
   },
   "keywords": [
-    "beanstalkd",
-    "worker"
+    "beanstalkd"
   ],
   "author": "",
   "license": "MIT",

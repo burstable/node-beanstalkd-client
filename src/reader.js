@@ -1,7 +1,6 @@
 import yaml from 'js-yaml';
 import {IgnoreType} from './types';
-
-const CRLF = new Buffer([0x0d, 0x0a]);
+import {CRLF} from './misc';
 
 function extractHeader(data) {
   let length = data.indexOf(CRLF)
@@ -40,8 +39,7 @@ export class BasicReader {
     if (response === this.expectation) {
       result = args;
 
-      // TODO: Parse types for IGNORE / casting
-
+      result = parseResult(result, this.types);
       resolve(result.length > 1 ? result : result[0]);
       return remainder;
     } else {
