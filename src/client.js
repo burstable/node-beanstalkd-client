@@ -6,6 +6,7 @@ import {BasicWriter, BodyWriter} from './writer';
 import {Type, IdType, PriorityType, DelayType, TubeType, IgnoreType, BodyType, YamlBodyType} from './types';
 
 const debug = require('debug')('beanstalkd');
+const debugError = require('debug')('beanstalkd:error');
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 11300;
 
@@ -72,6 +73,11 @@ function makeCommand(writer, reader) {
       });
 
       writer.handle(connection, ...args);
+    }).tap(function () {
+      debug(`Sent command "${writer.command} ${args.join(' ')}"`);
+    }).catch(function (err) {
+      debugError(`Command "${writer.command} ${args.join(' ')}"" ${err.toString()}`);
+      throw err;
     }).finally(() => {
       connection.removeListener('close', onConnectionEnded);
       connection.removeListener('error', onConnectionEnded);

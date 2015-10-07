@@ -1,6 +1,6 @@
 {
   "name": "beanstalkd",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A beanstalkd client for Node.js with promises",
   "main": "lib/client.js",
   "dependencies": {
