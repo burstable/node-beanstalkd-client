@@ -35,6 +35,11 @@ export default class BeanstalkdClient {
         resolve(this);
       });
 
+      connection.on('end', () => {
+        debug('connection finished');
+        this.closed = true;
+      });
+
       connection.on('close', () => {
         debug('connection closed');
         this.closed = true;
@@ -43,11 +48,16 @@ export default class BeanstalkdClient {
     });
   }
 
+  unref() {
+    this.connection.unref();
+  }
+
   on(event, ...args) {
     this.connection.on(event, ...args);
   }
 
   quit() {
+    this.closed = true;
     if (this.connection) {
       this.connection.end();
     }
@@ -59,6 +69,8 @@ function makeCommand(writer, reader) {
   var command = function (...args) {
     var onConnectionEnded
       , connection = this.connection;
+
+    if (connection.closed) throw new Error('Connection is closed');
 
     return new Promise((resolve, reject) => {
       onConnectionEnded = function (error) {
@@ -76,7 +88,7 @@ function makeCommand(writer, reader) {
     }).tap(function () {
       debug(`Sent command "${writer.command} ${args.join(' ')}"`);
     }).catch(function (err) {
-      debugError(`Command "${writer.command} ${args.join(' ')}"" ${err.toString()}`);
+      debugError(`Command "${writer.command} ${args.join(' ')}" ${err.toString()}`);
       throw err;
     }).finally(() => {
       connection.removeListener('close', onConnectionEnded);
