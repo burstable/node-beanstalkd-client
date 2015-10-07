@@ -36,8 +36,7 @@
     "test": "npm run test-unit && npm run test-integration",
     "test-unit": "NODE_PATH=src NODE_ENV=test mocha $npm_package_options_mocha test/unit/*.test.js test/unit/**/*.test.js",
     "test-integration": "docker-compose run client /bin/sh -c \"npm run test-integration-raw\"",
-    "test-integration-raw": "NODE_ENV=test mocha $npm_package_options_mocha test/integration/*.test.js test/integration/**/*.test.js",
-    "publish": "npm run test && publish"
+    "test-integration-raw": "NODE_ENV=test mocha $npm_package_options_mocha test/integration/*.test.js test/integration/**/*.test.js"
   },
   "repository": {
     "type": "git",
