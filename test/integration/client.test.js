@@ -71,7 +71,65 @@ describe('BeanstalkdClient', function () {
           })
         );
       }).then(() => {
-        return this.client.put(0, 0, 60, JSON.stringify(values)).then((putId) => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(putId).to.equal(reserveId);
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+
+            return worker.destroy(putId);
+          });
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
+
+    it('should be able to put a large job', function () {
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 1750; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(putId).to.equal(reserveId);
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          });
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
+
+    it('should be able to put a extremely large job', function () {
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 10000; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
           return worker.reserveWithTimeout(0).spread((reserveId, body) => {
             expect(putId).to.equal(reserveId);
             expect(JSON.parse(body.toString())).to.deep.equal(values);

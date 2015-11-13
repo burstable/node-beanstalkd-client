@@ -52,6 +52,8 @@ export class BasicReader {
 export class BodyReader extends BasicReader {
   constructor(expectation, ...types) {
     super(expectation, ...types);
+
+    this.continue = null;
   }
 
   parseBody(body) {
@@ -59,6 +61,32 @@ export class BodyReader extends BasicReader {
   }
 
   handle(data, resolve, reject) {
+    if (this.continue) {
+      let {
+        length,
+        result,
+        body
+      } = this.continue;
+
+      body = Buffer.concat([body, data]);
+
+      if (body.length - CRLF.length < length) {
+        this.continue.body = body;
+        return false;
+      }
+
+      this.continue = null;
+
+      body = body.slice(0, length);
+      remainder = body.slice(length + CRLF.length);
+
+      body = this.parseBody(body);
+      result.push(body);
+      result = parseResult(result, this.types);
+      resolve(result.length > 1 ? result : result[0]);
+      return remainder;
+    }
+
     let [header, remainder] = extractHeader(data)
       , args = header.split(' ')
       , response = args.shift()
@@ -70,10 +98,15 @@ export class BodyReader extends BasicReader {
       result = args;
 
       if (remainder.length < length) {
-        throw new Error('Im lost!');
+        this.continue = {
+          result: result,
+          body: remainder,
+          length: length
+        };
+        return false;
       } else {
         body = remainder.slice(0, length);
-        remainder = remainder.slice(length + CRLF.length, remainder.length);
+        remainder = remainder.slice(length + CRLF.length);
       }
 
       body = this.parseBody(body);
