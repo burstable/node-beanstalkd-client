@@ -17,6 +17,110 @@ export default class BeanstalkdClient {
     this.options = options || {};
     this.readQueue = null;
     this.closed = false;
+
+    this.use = makeCommand(
+      new BasicWriter('use', new TubeType()),
+      new BasicReader('USING', new TubeType())
+    );
+
+    this.listTubeUsed = makeCommand(
+      new BasicWriter('list-tube-used'),
+      new BasicReader('USING', new TubeType())
+    );
+
+    this.pauseTube = makeCommand(
+      new BasicWriter('pause-tube', new TubeType(), new DelayType()),
+      new BasicReader('PAUSED')
+    );
+
+    this.put = makeCommand(
+      new BodyWriter('put', new PriorityType(), new DelayType(), new Type('ttr', Number), new BodyType()),
+      new BasicReader('INSERTED', new IdType())
+    );
+
+    this.watch = makeCommand(
+      new BasicWriter('watch', new TubeType()),
+      new BasicReader('WATCHING', new TubeType())
+    );
+    this.ignore = makeCommand(
+      new BasicWriter('ignore', new TubeType()),
+      new BasicReader('WATCHING', new TubeType())
+    );
+
+    /* Reserve commands */
+    this.reserve = makeCommand(
+      new BasicWriter('reserve'),
+      new BodyReader('RESERVED', new IdType(), new BodyType())
+    );
+    this.reserveWithTimeout = makeCommand(
+      new BasicWriter('reserve-with-timeout', new Type('timeout', Number)),
+      new BodyReader('RESERVED', new IdType(), new BodyType())
+    );
+
+    /* Job commands */
+    this.destroy = makeCommand(
+      new BasicWriter('delete', new IdType()),
+      new BasicReader('DELETED')
+    );
+    this.bury = makeCommand(
+      new BasicWriter('bury', new IdType(), new PriorityType()),
+      new BasicReader('BURIED')
+    );
+    this.release = makeCommand(
+      new BasicWriter('release', new IdType(), new PriorityType(), new DelayType()),
+      new BasicReader('RELEASED')
+    );
+    this.touch = makeCommand(
+      new BasicWriter('touch', new IdType()),
+      new BasicReader('TOUCHED')
+    );
+    this.kickJob = makeCommand(
+      new BasicWriter('kick-job', new IdType()),
+      new BasicReader('KICKED')
+    );
+
+    /* Peek commands */
+    this.peek = makeCommand(
+      new BasicWriter('peek', new IdType()),
+      new BodyReader('FOUND', new IgnoreType(), new BodyType())
+    );
+
+    this.peekReady = makeCommand(
+      new BasicWriter('peek-ready'),
+      new BodyReader('FOUND', new IdType(), new BodyType())
+    );
+
+    this.peekDelayed = makeCommand(
+      new BasicWriter('peek-delayed'),
+      new BodyReader('FOUND', new IdType(), new BodyType())
+    );
+
+    this.peekBuried = makeCommand(
+      new BasicWriter('peek-buried'),
+      new BodyReader('FOUND', new IdType(), new BodyType())
+    );
+
+    /* Commands that returns YAML */
+    this.listTubesWatched = makeCommand(
+      new BasicWriter('list-tubes-watched'),
+      new YamlReader('OK', new YamlBodyType())
+    );
+    this.listTubes = makeCommand(
+      new BasicWriter('list-tubes'),
+      new YamlReader('OK', new YamlBodyType())
+    );
+    this.statsJob = makeCommand(
+      new BasicWriter('stats-job', new IdType()),
+      new YamlReader('OK', new YamlBodyType())
+    );
+    this.statsTube = makeCommand(
+      new BasicWriter('stats-tube', new TubeType()),
+      new YamlReader('OK', new YamlBodyType())
+    );
+    this.stats = makeCommand(
+      new BasicWriter('stats'),
+      new YamlReader('OK', new YamlBodyType())
+    );
   }
 
   connect() {
@@ -101,107 +205,3 @@ function makeCommand(writer, reader) {
 
   return command;
 }
-
-BeanstalkdClient.prototype.use = makeCommand(
-  new BasicWriter('use', new TubeType()),
-  new BasicReader('USING', new TubeType())
-);
-
-BeanstalkdClient.prototype.listTubeUsed = makeCommand(
-  new BasicWriter('list-tube-used'),
-  new BasicReader('USING', new TubeType())
-);
-
-BeanstalkdClient.prototype.pauseTube = makeCommand(
-  new BasicWriter('pause-tube', new TubeType(), new DelayType()),
-  new BasicReader('PAUSED')
-);
-
-BeanstalkdClient.prototype.put = makeCommand(
-  new BodyWriter('put', new PriorityType(), new DelayType(), new Type('ttr', Number), new BodyType()),
-  new BasicReader('INSERTED', new IdType())
-);
-
-BeanstalkdClient.prototype.watch = makeCommand(
-  new BasicWriter('watch', new TubeType()),
-  new BasicReader('WATCHING', new TubeType())
-);
-BeanstalkdClient.prototype.ignore = makeCommand(
-  new BasicWriter('ignore', new TubeType()),
-  new BasicReader('WATCHING', new TubeType())
-);
-
-/* Reserve commands */
-BeanstalkdClient.prototype.reserve = makeCommand(
-  new BasicWriter('reserve'),
-  new BodyReader('RESERVED', new IdType(), new BodyType())
-);
-BeanstalkdClient.prototype.reserveWithTimeout = makeCommand(
-  new BasicWriter('reserve-with-timeout', new Type('timeout', Number)),
-  new BodyReader('RESERVED', new IdType(), new BodyType())
-);
-
-/* Job commands */
-BeanstalkdClient.prototype.destroy = makeCommand(
-  new BasicWriter('delete', new IdType()),
-  new BasicReader('DELETED')
-);
-BeanstalkdClient.prototype.bury = makeCommand(
-  new BasicWriter('bury', new IdType(), new PriorityType()),
-  new BasicReader('BURIED')
-);
-BeanstalkdClient.prototype.release = makeCommand(
-  new BasicWriter('release', new IdType(), new PriorityType(), new DelayType()),
-  new BasicReader('RELEASED')
-);
-BeanstalkdClient.prototype.touch = makeCommand(
-  new BasicWriter('touch', new IdType()),
-  new BasicReader('TOUCHED')
-);
-BeanstalkdClient.prototype.kickJob = makeCommand(
-  new BasicWriter('kick-job', new IdType()),
-  new BasicReader('KICKED')
-);
-
-/* Peek commands */
-BeanstalkdClient.prototype.peek = makeCommand(
-  new BasicWriter('peek', new IdType()),
-  new BodyReader('FOUND', new IgnoreType(), new BodyType())
-);
-
-BeanstalkdClient.prototype.peekReady = makeCommand(
-  new BasicWriter('peek-ready'),
-  new BodyReader('FOUND', new IdType(), new BodyType())
-);
-
-BeanstalkdClient.prototype.peekDelayed = makeCommand(
-  new BasicWriter('peek-delayed'),
-  new BodyReader('FOUND', new IdType(), new BodyType())
-);
-
-BeanstalkdClient.prototype.peekBuried = makeCommand(
-  new BasicWriter('peek-buried'),
-  new BodyReader('FOUND', new IdType(), new BodyType())
-);
-
-/* Commands that returns YAML */
-BeanstalkdClient.prototype.listTubesWatched = makeCommand(
-  new BasicWriter('list-tubes-watched'),
-  new YamlReader('OK', new YamlBodyType())
-);
-BeanstalkdClient.prototype.listTubes = makeCommand(
-  new BasicWriter('list-tubes'),
-  new YamlReader('OK', new YamlBodyType())
-);
-BeanstalkdClient.prototype.statsJob = makeCommand(
-  new BasicWriter('stats-job', new IdType()),
-  new YamlReader('OK', new YamlBodyType())
-);
-BeanstalkdClient.prototype.statsTube = makeCommand(
-  new BasicWriter('stats-tube', new TubeType()),
-  new YamlReader('OK', new YamlBodyType())
-);
-BeanstalkdClient.prototype.stats = makeCommand(
-  new BasicWriter('stats'),
-  new YamlReader('OK', new YamlBodyType())
-);

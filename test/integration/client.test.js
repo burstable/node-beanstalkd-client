@@ -139,5 +139,93 @@ describe('BeanstalkdClient', function () {
         worker.quit();
       });
     });
+
+    it('should be able to reserve two large jobs in parallel', function () {
+      let workerA = new Client(host, port)
+        , workerB = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 1750; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return Promise.join(
+        workerA.connect(),
+        workerB.connect()
+      ).then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          workerA.watch(tube).then(function () {
+            return workerA.ignore('default');
+          }),
+          workerB.watch(tube).then(function () {
+            return workerB.ignore('default');
+          })
+        );
+      }).then(() => {
+        return Promise.join(
+          this.client.put(0, 0, 180, JSON.stringify(values)),
+          this.client.put(0, 0, 180, JSON.stringify(values))
+        ).then(() => {
+          return Promise.join(
+            workerA.reserveWithTimeout(0).spread((reserveId, body) => {
+              expect(JSON.parse(body.toString())).to.deep.equal(values);
+            }),
+            workerB.reserveWithTimeout(0).spread((reserveId, body) => {
+              expect(JSON.parse(body.toString())).to.deep.equal(values);
+            })
+          );
+        });
+      }).finally(function () {
+        workerA.quit();
+        workerB.quit();
+      });
+    });
+
+    it('should be able to reserve two large jobs on different tubes in parallel', function () {
+      let workerA = new Client(host, port)
+        , workerB = new Client(host, port)
+        , tubeA = Math.random().toString()
+        , tubeB = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 1750; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return Promise.join(
+        workerA.connect(),
+        workerB.connect()
+      ).then(() => {
+        return Promise.join(
+          this.client.use(tubeA).then(() => {
+            return this.client.put(0, 0, 180, JSON.stringify(values));
+          }).then(() => {
+            return this.client.use(tubeB).then(() => {
+              return this.client.put(0, 0, 180, JSON.stringify(values));
+            })
+          }),
+          workerA.watch(tubeA).then(function () {
+            return workerA.ignore('default');
+          }),
+          workerB.watch(tubeB).then(function () {
+            return workerB.ignore('default');
+          })
+        );
+      }).then(() => {
+        return Promise.join(
+          workerA.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          }),
+          workerB.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          })
+        );
+      }).finally(function () {
+        workerA.quit();
+        workerB.quit();
+      });
+    });
   });
 });

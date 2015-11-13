@@ -22,6 +22,10 @@ export default class ReadQueue {
 
     if (this.current === null) {
       this.current = this.queue.shift();
+
+      if (!this.current) {
+        throw new Error(`No read queue item for item, length: ${result.length}`);
+      }
     }
 
     result = this.current(data);
