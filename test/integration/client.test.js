@@ -141,12 +141,14 @@ describe('BeanstalkdClient', function () {
     });
 
     it('should be able to reserve two large jobs in parallel', function () {
+      this.timeout(10000);
+
       let workerA = new Client(host, port)
         , workerB = new Client(host, port)
         , tube = Math.random().toString()
         , values = {};
 
-      for (let i = 0; i < 1750; i++) {
+      for (let i = 0; i < 10000; i++) {
         values[Math.random().toString()] = Math.random().toString();
       }
 
@@ -183,14 +185,98 @@ describe('BeanstalkdClient', function () {
       });
     });
 
+    it('should be able to put and reserve large jobs serially', function () {
+      this.timeout(10000);
+
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 100000; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then(() => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          });
+        });
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then(() => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          });
+        });
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then(() => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+          });
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
+
+    it('should be able to put and reserve large jobs serially (2)', function () {
+      this.timeout(10000);
+
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      for (let i = 0; i < 100000; i++) {
+        values[Math.random().toString()] = Math.random().toString();
+      }
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return Promise.join(
+          this.client.put(0, 0, 180, JSON.stringify(values)),
+          this.client.put(0, 0, 180, JSON.stringify(values)),
+          this.client.put(0, 0, 180, JSON.stringify(values))
+        );
+      }).then(() => {
+        return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+          expect(JSON.parse(body.toString())).to.deep.equal(values);
+        });
+      }).then(() => {
+        return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+          expect(JSON.parse(body.toString())).to.deep.equal(values);
+        });
+      }).then(() => {
+        return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+          expect(JSON.parse(body.toString())).to.deep.equal(values);
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
+
     it('should be able to reserve two large jobs on different tubes in parallel', function () {
+      this.timeout(10000);
+
       let workerA = new Client(host, port)
         , workerB = new Client(host, port)
         , tubeA = Math.random().toString()
         , tubeB = Math.random().toString()
         , values = {};
 
-      for (let i = 0; i < 1750; i++) {
+      for (let i = 0; i < 10000; i++) {
         values[Math.random().toString()] = Math.random().toString();
       }
 

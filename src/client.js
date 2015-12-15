@@ -128,7 +128,9 @@ export default class BeanstalkdClient {
       debug('connecting to %s:%s', this.host, this.port);
       let connection = net.createConnection(this.port, this.host);
 
-      connection.on('error', function (err) {
+      connection.on('error', (err) => {
+        this.closed = true;
+        this.error = err;
         reject(err);
       });
 
@@ -174,7 +176,7 @@ function makeCommand(writer, reader) {
     var onConnectionEnded
       , connection = this.connection;
 
-    if (connection.closed) throw new Error('Connection is closed');
+    if (this.closed) throw new Error('Connection is closed');
 
     return new Promise((resolve, reject) => {
       onConnectionEnded = function (error) {

@@ -45,7 +45,7 @@ describe('BeanstalkdClient', function () {
       expect(promise.isFulfilled()).to.equal(true);
     });
 
-    it('should resolve on error event', function () {
+    it('should reject on error event', function () {
       var promise = this.client.connect()
         , callback = this.connectionStub.on.withArgs('error').getCall(0).args[1];
 
@@ -122,6 +122,21 @@ describe('BeanstalkdClient', function () {
         expect(this.connectionStub.listenerCount('close')).to.equal(1);
         expect(this.connectionStub.listenerCount('error')).to.equal(1);
       });
+    });
+  });
+
+  describe('readQueue', function () {
+    it('should close connection if read queue errors', function () {
+      let client = client = new BeanstalkdClient(Math.random().toString(), Math.floor(Math.random() * 9999));
+      client.connect();
+      this.connectionStub.emit('connect');
+
+      expect(() => {
+        this.connectionStub.emit('data', new Buffer(Math.random().toString()));
+      }).to.throw();
+
+      expect(client.closed).to.equal(true);
+      expect(client.error).to.be.ok;
     });
   });
 });

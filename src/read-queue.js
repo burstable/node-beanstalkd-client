@@ -24,7 +24,9 @@ export default class ReadQueue {
       this.current = this.queue.shift();
 
       if (!this.current) {
-        throw new Error(`No read queue item for item, length: ${data.length}`);
+        this.connection.emit('error', new Error(`No read queue item for item, length: ${data.length}`));
+        this.connection.destroy();
+        return;
       }
     }
 
