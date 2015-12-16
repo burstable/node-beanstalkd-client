@@ -1,6 +1,6 @@
 {
   "name": "beanstalkd",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A beanstalkd client for Node.js with promises",
   "main": "lib/client.js",
   "dependencies": {
@@ -30,7 +30,7 @@
     "prepublish": "npm run check && npm run build",
     "check": "npm run lint && npm run test-unit",
     "lint": "eslint src",
-    "build": "rm -rf lib/* && babel src --ignore test --optional runtime --out-dir lib",
+    "build": "rm -rf lib/* && babel src --ignore test --optional runtime,bluebirdCoroutines --out-dir lib",
     "build-docker": "docker-compose build",
     "cover": "NODE_PATH=src NODE_ENV=test istanbul cover _mocha -- $npm_package_options_mocha test/unit/*.test.js test/unit/**/*.test.js",
     "test": "npm run test-unit && npm run test-integration",

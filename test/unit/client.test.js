@@ -80,7 +80,7 @@ describe('BeanstalkdClient', function () {
   });
 
   describe('commands', function () {
-    it('should reject call if connection closes during command', function () {
+    it('should reject call if connection closes during command', async function () {
       let promise
         , client;
 
@@ -92,15 +92,17 @@ describe('BeanstalkdClient', function () {
         return client.reserve();
       });
 
+      await client.writeQueue;
+
       this.connectionStub.emit('close');
 
-      return expect(promise).to.be.rejectedWith('CLOSED').then(() => {
-        expect(this.connectionStub.removeListener).to.have.been.calledWith('close');
-        expect(this.connectionStub.removeListener).to.have.been.calledWith('error');
-      });
+      await expect(promise).to.be.rejectedWith('CLOSED');
+
+      expect(this.connectionStub.removeListener).to.have.been.calledWith('close');
+      expect(this.connectionStub.removeListener).to.have.been.calledWith('error');
     });
 
-    it('should reject call if connection has an error during command', function () {
+    it('should reject call if connection has an error during command', async function () {
       let promise
         , client
         , error = Math.random().toString();
@@ -113,15 +115,16 @@ describe('BeanstalkdClient', function () {
         return client.reserve();
       });
 
+      await client.writeQueue;
+
       expect(this.connectionStub.listenerCount('close')).to.equal(2);
       expect(this.connectionStub.listenerCount('error')).to.equal(2);
 
       this.connectionStub.emit('error', error);
 
-      return expect(promise).to.be.rejectedWith(error).then(() => {
-        expect(this.connectionStub.listenerCount('close')).to.equal(1);
-        expect(this.connectionStub.listenerCount('error')).to.equal(1);
-      });
+      await expect(promise).to.be.rejectedWith(error);
+      expect(this.connectionStub.listenerCount('close')).to.equal(1);
+      expect(this.connectionStub.listenerCount('error')).to.equal(1);
     });
   });
 

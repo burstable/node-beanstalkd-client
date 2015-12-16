@@ -16,6 +16,7 @@ export default class BeanstalkdClient {
     this.port = port || DEFAULT_PORT;
     this.options = options || {};
     this.readQueue = null;
+    this.writeQueue = Promise.resolve();
     this.closed = false;
 
     this.use = makeCommand(
@@ -172,34 +173,44 @@ export default class BeanstalkdClient {
 }
 
 function makeCommand(writer, reader) {
-  var command = function (...args) {
-    var onConnectionEnded
-      , connection = this.connection;
+  let command = async function (...args) {
+    let onConnectionEnded
+      , connection = this.connection
+      , result;
 
     if (this.closed) throw new Error('Connection is closed');
 
-    return new Promise((resolve, reject) => {
-      onConnectionEnded = function (error) {
-        reject(error || 'CLOSED');
-      };
+    await this.writeQueue;
 
-      connection.once('close', onConnectionEnded);
-      connection.once('error', onConnectionEnded);
+    try {
+      result = new Promise((resolve, reject) => {
+        onConnectionEnded = function (error) {
+          reject(error || 'CLOSED');
+        };
 
-      this.readQueue.push(function (data) {
-        return reader.handle(data, resolve, reject);
+        connection.once('close', onConnectionEnded);
+        connection.once('error', onConnectionEnded);
+
+        this.readQueue.push(function (data) {
+          return reader.handle(data, resolve, reject);
+        });
+        writer.handle(connection, ...args);
       });
 
-      writer.handle(connection, ...args);
-    }).tap(function () {
+      this.writeQueue = result.reflect();
+
+      await result;
+
       debug(`Sent command "${writer.command} ${args.join(' ')}"`);
-    }).catch(function (err) {
+    } catch (err) {
       debugError(`Command "${writer.command} ${args.join(' ')}" ${err.toString()}`);
       throw err;
-    }).finally(() => {
+    } finally {
       connection.removeListener('close', onConnectionEnded);
       connection.removeListener('error', onConnectionEnded);
-    });
+    }
+
+    return result;
   };
 
   command.writer = writer;

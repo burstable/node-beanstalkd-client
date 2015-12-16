@@ -18,16 +18,19 @@ export class Writer {
 }
 
 export class BasicWriter extends Writer {
-  handle(connection, ...args) {
+  async handle(connection, ...args) {
     this.validateArgs(args);
 
     args.unshift(this.command);
-    connection.write(Buffer.concat([new Buffer(args.join(' ')), CRLF]));
+
+    await new Promise(resolve => {
+      connection.write(Buffer.concat([new Buffer(args.join(' ')), CRLF]), resolve);
+    });
   }
 }
 
 export class BodyWriter extends BasicWriter {
-  handle(connection, ...args) {
+  async handle(connection, ...args) {
     this.validateArgs(args);
 
     let body = args.pop();
@@ -38,6 +41,9 @@ export class BodyWriter extends BasicWriter {
 
     args.unshift(this.command);
     args.push(body.length);
-    connection.write(Buffer.concat([new Buffer(args.join(' ')), CRLF, body, CRLF]));
+
+    await new Promise(resolve => {
+      connection.write(Buffer.concat([new Buffer(args.join(' ')), CRLF, body, CRLF]), resolve);
+    });
   }
 }
