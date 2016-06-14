@@ -192,7 +192,17 @@ function makeCommand(writer, reader) {
         connection.once('error', onConnectionEnded);
 
         this.readQueue.push(function (data) {
-          return reader.handle(data, resolve, reject);
+          return reader.handle(data, function (result) {
+            connection.removeListener('close', onConnectionEnded);
+            connection.removeListener('error', onConnectionEnded);
+
+            resolve(result);
+          }, function (err) {
+            connection.removeListener('close', onConnectionEnded);
+            connection.removeListener('error', onConnectionEnded);
+
+            reject(err);
+          });
         });
         writer.handle(connection, ...args);
       });
