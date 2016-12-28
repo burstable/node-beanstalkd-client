@@ -5,6 +5,8 @@ Inspired by the great work on [fivebeans](https://github.com/ceejbot/fivebeans) 
 
 \* The client will handle connections and command request/responses, but does not setup everything required to run workers.
 
+For a high level beanstalkd worker client, see [node-beanstalkd-worker](https://github.com/burstable/node-beanstalkd-worker)
+
 ## Install
 
 `$ npm install --save beanstalkd`
