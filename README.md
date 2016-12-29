@@ -36,7 +36,7 @@ beanstalkd.connect().then(function (beanstalkd) {
 ## Commands
 
 All beanstalkd commands are implemented per the protocol.
-Method names are the same as beanstalk command names camelCased, list-tubes-watched becomes listTubesWatched. 
+Method names are the same as beanstalk command names camelCased, list-tubes-watched becomes listTubesWatched.
 
 ## Debugging
 

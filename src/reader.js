@@ -78,7 +78,7 @@ export class BodyReader extends BasicReader {
       this.continue = null;
 
       body = body.slice(0, length);
-      remainder = body.slice(length + CRLF.length);
+      let remainder = body.slice(length + CRLF.length);
 
       body = this.parseBody(body);
       result.push(body);

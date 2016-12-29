@@ -130,7 +130,7 @@ describe('BeanstalkdClient', function () {
 
   describe('readQueue', function () {
     it('should close connection if read queue errors', function () {
-      let client = client = new BeanstalkdClient(Math.random().toString(), Math.floor(Math.random() * 9999));
+      let client = new BeanstalkdClient(Math.random().toString(), Math.floor(Math.random() * 9999));
       client.connect();
       this.connectionStub.emit('connect');
 

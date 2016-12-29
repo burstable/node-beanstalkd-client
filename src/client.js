@@ -1,9 +1,10 @@
 import net from 'net';
 import Promise from 'bluebird';
+import BeanstalkdProtocol from 'beanstalkd-protocol';
 import ReadQueue from './read-queue';
 import {BasicReader, BodyReader, YamlReader} from './reader';
 import {BasicWriter, BodyWriter} from './writer';
-import {Type, IdType, PriorityType, DelayType, TubeType, IgnoreType, BodyType, YamlBodyType} from './types';
+import {IdType, TubeType, IgnoreType, BodyType, YamlBodyType} from './types';
 
 const debug = require('debug')('beanstalkd');
 const debugError = require('debug')('beanstalkd:error');
@@ -15,12 +16,13 @@ export default class BeanstalkdClient {
     this.host = host || DEFAULT_HOST;
     this.port = port || DEFAULT_PORT;
     this.options = options || {};
+    this.protocol = new BeanstalkdProtocol();
     this.readQueue = null;
     this.writeQueue = Promise.resolve();
     this.closed = false;
 
     this.use = makeCommand(
-      new BasicWriter('use', new TubeType()),
+      new BasicWriter('use'),
       new BasicReader('USING', new TubeType())
     );
 
@@ -30,21 +32,21 @@ export default class BeanstalkdClient {
     );
 
     this.pauseTube = makeCommand(
-      new BasicWriter('pause-tube', new TubeType(), new DelayType()),
+      new BasicWriter('pause-tube'),
       new BasicReader('PAUSED')
     );
 
     this.put = makeCommand(
-      new BodyWriter('put', new PriorityType(), new DelayType(), new Type('ttr', Number), new BodyType()),
+      new BodyWriter('put'),
       new BasicReader('INSERTED', new IdType())
     );
 
     this.watch = makeCommand(
-      new BasicWriter('watch', new TubeType()),
+      new BasicWriter('watch'),
       new BasicReader('WATCHING', new TubeType())
     );
     this.ignore = makeCommand(
-      new BasicWriter('ignore', new TubeType()),
+      new BasicWriter('ignore'),
       new BasicReader('WATCHING', new TubeType())
     );
 
@@ -54,35 +56,35 @@ export default class BeanstalkdClient {
       new BodyReader('RESERVED', new IdType(), new BodyType())
     );
     this.reserveWithTimeout = makeCommand(
-      new BasicWriter('reserve-with-timeout', new Type('timeout', Number)),
+      new BasicWriter('reserve-with-timeout'),
       new BodyReader('RESERVED', new IdType(), new BodyType())
     );
 
     /* Job commands */
     this.destroy = makeCommand(
-      new BasicWriter('delete', new IdType()),
+      new BasicWriter('delete'),
       new BasicReader('DELETED')
     );
     this.bury = makeCommand(
-      new BasicWriter('bury', new IdType(), new PriorityType()),
+      new BasicWriter('bury'),
       new BasicReader('BURIED')
     );
     this.release = makeCommand(
-      new BasicWriter('release', new IdType(), new PriorityType(), new DelayType()),
+      new BasicWriter('release'),
       new BasicReader('RELEASED')
     );
     this.touch = makeCommand(
-      new BasicWriter('touch', new IdType()),
+      new BasicWriter('touch'),
       new BasicReader('TOUCHED')
     );
     this.kickJob = makeCommand(
-      new BasicWriter('kick-job', new IdType()),
+      new BasicWriter('kick-job'),
       new BasicReader('KICKED')
     );
 
     /* Peek commands */
     this.peek = makeCommand(
-      new BasicWriter('peek', new IdType()),
+      new BasicWriter('peek'),
       new BodyReader('FOUND', new IgnoreType(), new BodyType())
     );
 
@@ -111,11 +113,11 @@ export default class BeanstalkdClient {
       new YamlReader('OK', new YamlBodyType())
     );
     this.statsJob = makeCommand(
-      new BasicWriter('stats-job', new IdType()),
+      new BasicWriter('stats-job'),
       new YamlReader('OK', new YamlBodyType())
     );
     this.statsTube = makeCommand(
-      new BasicWriter('stats-tube', new TubeType()),
+      new BasicWriter('stats-tube'),
       new YamlReader('OK', new YamlBodyType())
     );
     this.stats = makeCommand(
@@ -176,6 +178,7 @@ function makeCommand(writer, reader) {
   let command = async function (...args) {
     let onConnectionEnded
       , connection = this.connection
+      , protocol = this.protocol
       , result;
 
     if (this.closed) throw new Error('Connection is closed');
@@ -204,7 +207,7 @@ function makeCommand(writer, reader) {
             reject(err);
           });
         });
-        writer.handle(connection, ...args);
+        writer.handle(protocol, connection, ...args);
       });
 
       this.writeQueue = result.reflect();

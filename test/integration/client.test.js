@@ -1,4 +1,4 @@
-import Client from 'client';
+import Client from '../../src/client';
 import {expect} from 'chai';
 import Promise from 'bluebird';
 
