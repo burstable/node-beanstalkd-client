@@ -1,129 +1,48 @@
 import yaml from 'js-yaml';
-import {IgnoreType} from './types';
-import {CRLF} from './misc';
-
-function extractHeader(data) {
-  let length = data.indexOf(CRLF)
-    , header = data.toString('utf8', 0, length)
-    , remainder = data.slice(length + CRLF.length, data.length);
-
-  return [header, remainder];
-}
-
-export function parseResult(result, types) {
-  let offset = 0;
-
-  result = result.slice(0);
-  types.forEach(function (type, i) {
-    if (type instanceof IgnoreType) {
-      result.splice(i + offset, 1);
-      offset--;
-    }
-  });
-
-  return result;
-}
 
 export class BasicReader {
-  constructor(expectation, ...types) {
+  constructor(expectation) {
     this.expectation = expectation;
-    this.types = types;
+    this.remainder = new Buffer(0);
   }
 
-  handle(data, resolve, reject) {
-    let [header, remainder] = extractHeader(data)
-      , args = header.split(' ')
-      , response = args.shift()
-      , result = null;
+  parseData(data) {
+    return data;
+  }
 
-    if (response === this.expectation) {
-      result = args;
+  handle(protocol, data, resolve, reject) {
+    let [remainder, result] = protocol.parseReply(Buffer.concat([this.remainder, data]));
 
-      result = parseResult(result, this.types);
-      resolve(result.length > 1 ? result : result[0]);
-      return remainder;
+    if (remainder && !result) {
+      this.remainder = remainder;
+      return;
     } else {
-      reject(new Error(response));
-      return remainder;
+      this.remainder = new Buffer(0);
+    }
+
+    if (result.reply === this.expectation) {
+      let args = []
+        , spec = protocol.replyMap[result.reply];
+
+      if (spec) {
+        let bytes = spec.args.indexOf('bytes');
+        args = spec.args.map(arg => result.args[arg]);
+        if (bytes !== -1) {
+          args.splice(bytes, 1);
+          args[args.length - 1] = this.parseData(args[args.length - 1]);
+        }
+      }
+      resolve(args.length > 1 ? args : args[0]);
+      return remainder || new Buffer(0);
+    } else {
+      reject(new Error(result.reply));
+      return remainder || new Buffer(0);
     }
   }
 }
 
-export class BodyReader extends BasicReader {
-  constructor(expectation, ...types) {
-    super(expectation, ...types);
-
-    this.continue = null;
-  }
-
-  parseBody(body) {
-    return body;
-  }
-
-  handle(data, resolve, reject) {
-    if (this.continue) {
-      let {
-        length,
-        result,
-        body
-      } = this.continue;
-
-      body = Buffer.concat([body, data]);
-
-      if (body.length - CRLF.length < length) {
-        this.continue.body = body;
-        return false;
-      }
-
-      this.continue = null;
-
-      body = body.slice(0, length);
-      let remainder = body.slice(length + CRLF.length);
-
-      body = this.parseBody(body);
-      result.push(body);
-      result = parseResult(result, this.types);
-      resolve(result.length > 1 ? result : result[0]);
-      return remainder;
-    }
-
-    let [header, remainder] = extractHeader(data)
-      , args = header.split(' ')
-      , response = args.shift()
-      , length = parseInt(args.pop(), 10)
-      , result = null
-      , body;
-
-    if (response === this.expectation) {
-      result = args;
-
-      if (remainder.length < length) {
-        this.continue = {
-          result: result,
-          body: remainder,
-          length: length
-        };
-        return false;
-      } else {
-        body = remainder.slice(0, length);
-        remainder = remainder.slice(length + CRLF.length);
-      }
-
-      body = this.parseBody(body);
-
-      result.push(body);
-      result = parseResult(result, this.types);
-      resolve(result.length > 1 ? result : result[0]);
-      return remainder;
-    } else {
-      reject(new Error(response));
-      return remainder;
-    }
-  }
-}
-
-export class YamlReader extends BodyReader {
-  parseBody(body) {
-    return yaml.load(body.toString());
+export class YamlReader extends BasicReader {
+  parseData(data) {
+    return yaml.load(data.toString());
   }
 }

@@ -25,7 +25,7 @@ export default class ReadQueue {
 
       if (!this.current) {
         this.connection.emit('error', new Error(`No read queue item for item, length: ${data.length}`));
-        console.log(data.toString());
+        console.log('No read queue item'/* , data.toString() */);
         this.connection.destroy();
         return;
       }
@@ -41,4 +41,3 @@ export default class ReadQueue {
     }
   }
 }
-

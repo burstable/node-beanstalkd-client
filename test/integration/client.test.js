@@ -33,7 +33,7 @@ describe('BeanstalkdClient', function () {
       return this.client.use(Math.random().toString()).then(() => {
         return this.client.put(0, 0, 60, JSON.stringify(values));
       }).then((jobId) => {
-        return this.client.peek(jobId).then(function (payload) {
+        return this.client.peek(jobId).spread(function (jobId, payload) {
           expect(Buffer.isBuffer(payload)).to.be.ok;
           expect(JSON.parse(payload.toString())).to.deep.equal(values);
         });
@@ -50,6 +50,12 @@ describe('BeanstalkdClient', function () {
         expect(tubes).to.deep.equal([
           tube
         ]);
+      });
+    });
+
+    it('should return stats', function () {
+      return this.client.stats().then((stats) => {
+        expect(stats.hostname).to.be.ok;
       });
     });
 
@@ -73,7 +79,7 @@ describe('BeanstalkdClient', function () {
       }).then(() => {
         return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
           return worker.reserveWithTimeout(0).spread((reserveId, body) => {
-            expect(putId).to.equal(reserveId);
+            expect(putId.toString()).to.equal(reserveId.toString());
             expect(JSON.parse(body.toString())).to.deep.equal(values);
 
             return worker.destroy(putId);
@@ -103,7 +109,7 @@ describe('BeanstalkdClient', function () {
       }).then(() => {
         return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
           return worker.reserveWithTimeout(0).spread((reserveId, body) => {
-            expect(putId).to.equal(reserveId);
+            expect(putId.toString()).to.equal(reserveId.toString());
             expect(JSON.parse(body.toString())).to.deep.equal(values);
           });
         });
@@ -131,7 +137,7 @@ describe('BeanstalkdClient', function () {
       }).then(() => {
         return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
           return worker.reserveWithTimeout(0).spread((reserveId, body) => {
-            expect(putId).to.equal(reserveId);
+            expect(putId.toString()).to.equal(reserveId.toString());
             expect(JSON.parse(body.toString())).to.deep.equal(values);
           });
         });

@@ -2,9 +2,10 @@ import net from 'net';
 import Promise from 'bluebird';
 import BeanstalkdProtocol from 'beanstalkd-protocol';
 import ReadQueue from './read-queue';
-import {BasicReader, BodyReader, YamlReader} from './reader';
-import {BasicWriter, BodyWriter} from './writer';
-import {IdType, TubeType, IgnoreType, BodyType, YamlBodyType} from './types';
+import {BasicReader, YamlReader} from './reader';
+import {BasicWriter} from './writer';
+import {commands, yamlCommands} from './commands';
+import camelCase from 'lodash.camelcase';
 
 const debug = require('debug')('beanstalkd');
 const debugError = require('debug')('beanstalkd:error');
@@ -20,110 +21,26 @@ export default class BeanstalkdClient {
     this.readQueue = null;
     this.writeQueue = Promise.resolve();
     this.closed = false;
+  }
 
-    this.use = makeCommand(
-      new BasicWriter('use'),
-      new BasicReader('USING', new TubeType())
+  static addCommand(command, expected) {
+    BeanstalkdClient.prototype[camelCase(command)] = makeCommand(
+      command,
+      new BasicWriter(command),
+      new BasicReader(expected)
     );
+  }
 
-    this.listTubeUsed = makeCommand(
-      new BasicWriter('list-tube-used'),
-      new BasicReader('USING', new TubeType())
+  static addYamlCommand(command, expected) {
+    BeanstalkdClient.prototype[camelCase(command)] = makeCommand(
+      command,
+      new BasicWriter(command),
+      new YamlReader(expected)
     );
+  }
 
-    this.pauseTube = makeCommand(
-      new BasicWriter('pause-tube'),
-      new BasicReader('PAUSED')
-    );
-
-    this.put = makeCommand(
-      new BodyWriter('put'),
-      new BasicReader('INSERTED', new IdType())
-    );
-
-    this.watch = makeCommand(
-      new BasicWriter('watch'),
-      new BasicReader('WATCHING', new TubeType())
-    );
-    this.ignore = makeCommand(
-      new BasicWriter('ignore'),
-      new BasicReader('WATCHING', new TubeType())
-    );
-
-    /* Reserve commands */
-    this.reserve = makeCommand(
-      new BasicWriter('reserve'),
-      new BodyReader('RESERVED', new IdType(), new BodyType())
-    );
-    this.reserveWithTimeout = makeCommand(
-      new BasicWriter('reserve-with-timeout'),
-      new BodyReader('RESERVED', new IdType(), new BodyType())
-    );
-
-    /* Job commands */
-    this.destroy = makeCommand(
-      new BasicWriter('delete'),
-      new BasicReader('DELETED')
-    );
-    this.bury = makeCommand(
-      new BasicWriter('bury'),
-      new BasicReader('BURIED')
-    );
-    this.release = makeCommand(
-      new BasicWriter('release'),
-      new BasicReader('RELEASED')
-    );
-    this.touch = makeCommand(
-      new BasicWriter('touch'),
-      new BasicReader('TOUCHED')
-    );
-    this.kickJob = makeCommand(
-      new BasicWriter('kick-job'),
-      new BasicReader('KICKED')
-    );
-
-    /* Peek commands */
-    this.peek = makeCommand(
-      new BasicWriter('peek'),
-      new BodyReader('FOUND', new IgnoreType(), new BodyType())
-    );
-
-    this.peekReady = makeCommand(
-      new BasicWriter('peek-ready'),
-      new BodyReader('FOUND', new IdType(), new BodyType())
-    );
-
-    this.peekDelayed = makeCommand(
-      new BasicWriter('peek-delayed'),
-      new BodyReader('FOUND', new IdType(), new BodyType())
-    );
-
-    this.peekBuried = makeCommand(
-      new BasicWriter('peek-buried'),
-      new BodyReader('FOUND', new IdType(), new BodyType())
-    );
-
-    /* Commands that returns YAML */
-    this.listTubesWatched = makeCommand(
-      new BasicWriter('list-tubes-watched'),
-      new YamlReader('OK', new YamlBodyType())
-    );
-    this.listTubes = makeCommand(
-      new BasicWriter('list-tubes'),
-      new YamlReader('OK', new YamlBodyType())
-    );
-    this.statsJob = makeCommand(
-      new BasicWriter('stats-job'),
-      new YamlReader('OK', new YamlBodyType())
-    );
-    this.statsTube = makeCommand(
-      new BasicWriter('stats-tube'),
-      new YamlReader('OK', new YamlBodyType())
-    );
-    this.stats = makeCommand(
-      new BasicWriter('stats'),
-      new YamlReader('OK', new YamlBodyType())
-    );
+  destroy(...args) {
+    return this['delete'](...args);
   }
 
   connect() {
@@ -174,12 +91,22 @@ export default class BeanstalkdClient {
   }
 }
 
-function makeCommand(writer, reader) {
-  let command = async function (...args) {
+commands.forEach(([command, expectation]) => BeanstalkdClient.addCommand(command, expectation));
+yamlCommands.forEach(([command, expectation]) => BeanstalkdClient.addYamlCommand(command, expectation));
+
+function makeCommand(command, writer, reader) {
+  let handler = async function (...args) {
     let onConnectionEnded
       , connection = this.connection
       , protocol = this.protocol
+      , spec = protocol.commandMap[command]
       , result;
+
+    if (spec.args.indexOf('bytes') > -1) {
+      let data = args.pop();
+      args.push(data.length);
+      args.push(data);
+    }
 
     if (this.closed) throw new Error('Connection is closed');
 
@@ -188,14 +115,14 @@ function makeCommand(writer, reader) {
     try {
       result = new Promise((resolve, reject) => {
         onConnectionEnded = function (error) {
-          reject(error || 'CLOSED');
+          reject(error || new Error('CONNECTION_CLOSED'));
         };
 
         connection.once('close', onConnectionEnded);
         connection.once('error', onConnectionEnded);
 
         this.readQueue.push(function (data) {
-          return reader.handle(data, function (result) {
+          return reader.handle(protocol, data, function (result) {
             connection.removeListener('close', onConnectionEnded);
             connection.removeListener('error', onConnectionEnded);
 
@@ -226,8 +153,10 @@ function makeCommand(writer, reader) {
     return result;
   };
 
-  command.writer = writer;
-  command.reader = reader;
+  /*
+  handler.writer = writer;
+  handler.reader = reader;
+  */
 
-  return command;
+  return handler;
 }
