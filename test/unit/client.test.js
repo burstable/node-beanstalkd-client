@@ -1,5 +1,6 @@
 import BeanstalkdClient from 'client';
 import {expect} from 'chai';
+import Promise from 'bluebird';
 import sinon from 'sinon';
 import net from 'net';
 import {EventEmitter} from 'events';
@@ -88,12 +89,12 @@ describe('BeanstalkdClient', function () {
       client.connect();
       this.connectionStub.emit('connect');
 
+      await client.writeQueue;
       promise = client.watch(Math.random().toString()).then(function() {
         return client.reserve();
       });
 
-      await client.writeQueue;
-
+      await Promise.delay(1);
       this.connectionStub.emit('close');
 
       await expect(promise).to.be.rejectedWith('CLOSED');
@@ -111,12 +112,12 @@ describe('BeanstalkdClient', function () {
       client.connect();
       this.connectionStub.emit('connect');
 
+      await client.writeQueue;
       promise = client.watch(Math.random().toString()).then(function() {
         return client.reserve();
       });
 
-      await client.writeQueue;
-
+      await Promise.delay(1);
       expect(this.connectionStub.listenerCount('close')).to.equal(2);
       expect(this.connectionStub.listenerCount('error')).to.equal(2);
 

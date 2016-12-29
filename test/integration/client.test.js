@@ -56,6 +56,12 @@ describe('BeanstalkdClient', function () {
     it('should return stats', function () {
       return this.client.stats().then((stats) => {
         expect(stats.hostname).to.be.ok;
+
+        return Promise.join(
+          this.client.stats(),
+          this.client.stats(),
+          this.client.stats()
+        );
       });
     });
 

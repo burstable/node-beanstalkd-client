@@ -96,8 +96,7 @@ yamlCommands.forEach(([command, expectation]) => BeanstalkdClient.addYamlCommand
 
 function makeCommand(command, writer, reader) {
   let handler = async function (...args) {
-    let onConnectionEnded
-      , connection = this.connection
+    let connection = this.connection
       , protocol = this.protocol
       , spec = protocol.commandMap[command]
       , result;
@@ -110,14 +109,13 @@ function makeCommand(command, writer, reader) {
 
     if (this.closed) throw new Error('Connection is closed');
 
-    await this.writeQueue;
+    let defered = defer();
+    let onConnectionEnded = function (error) {
+      defered.reject(error || new Error('CONNECTION_CLOSED'));
+    };
 
     try {
-      result = new Promise((resolve, reject) => {
-        onConnectionEnded = function (error) {
-          reject(error || new Error('CONNECTION_CLOSED'));
-        };
-
+      result = this.writeQueue.then(() => {
         connection.once('close', onConnectionEnded);
         connection.once('error', onConnectionEnded);
 
@@ -126,18 +124,20 @@ function makeCommand(command, writer, reader) {
             connection.removeListener('close', onConnectionEnded);
             connection.removeListener('error', onConnectionEnded);
 
-            resolve(result);
+            defered.resolve(result);
           }, function (err) {
             connection.removeListener('close', onConnectionEnded);
             connection.removeListener('error', onConnectionEnded);
 
-            reject(err);
+            defered.reject(err);
           });
         });
-        writer.handle(protocol, connection, ...args);
+        writer.handle(protocol, connection, ...args).catch(defered.reject);
+
+        return defered.promise;
       });
 
-      this.writeQueue = result.reflect();
+      this.writeQueue = defered.promise.reflect();
 
       await result;
 
@@ -153,10 +153,18 @@ function makeCommand(command, writer, reader) {
     return result;
   };
 
-  /*
-  handler.writer = writer;
-  handler.reader = reader;
-  */
-
   return handler;
+}
+
+function defer() {
+  let resolve, reject;
+  let promise = new Promise(function () {
+    resolve = arguments[0];
+    reject = arguments[1];
+  });
+  return {
+    resolve: resolve,
+    reject: reject,
+    promise: promise
+  };
 }
