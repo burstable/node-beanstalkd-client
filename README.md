@@ -50,6 +50,7 @@ import Beanstald from 'beanstalkd';
 Beanstalkd.prototype.protocol.addType('key', String);
 Beanstalkd.prototype.protocol.addCommand('AUTH <key>\r\n');
 Beanstalkd.prototype.protocol.addReply('OK\r\n');
+Beanstalkd.prototype.protocol.addReply('AUTH_FAILED\r\n');
 Beanstalkd.addCommand('AUTH', 'OK');
 ```
 
