@@ -17,7 +17,6 @@ export default class BeanstalkdClient {
     this.host = host || DEFAULT_HOST;
     this.port = port || DEFAULT_PORT;
     this.options = options || {};
-    this.protocol = new BeanstalkdProtocol();
     this.readQueue = null;
     this.writeQueue = Promise.resolve();
     this.closed = false;
@@ -74,28 +73,7 @@ export default class BeanstalkdClient {
     });
   }
 
-  unref() {
-    this.connection.unref();
-  }
-
-  on(event, ...args) {
-    this.connection.on(event, ...args);
-  }
-
-  quit() {
-    this.closed = true;
-    if (this.connection) {
-      this.connection.end();
-    }
-    return Promise.resolve();
-  }
-}
-
-commands.forEach(([command, expectation]) => BeanstalkdClient.addCommand(command, expectation));
-yamlCommands.forEach(([command, expectation]) => BeanstalkdClient.addYamlCommand(command, expectation));
-
-function makeCommand(command, writer, reader) {
-  let handler = async function (...args) {
+  async _command(command, args, writer, reader) {
     let connection = this.connection
       , protocol = this.protocol
       , spec = protocol.commandMap[command]
@@ -151,6 +129,33 @@ function makeCommand(command, writer, reader) {
     }
 
     return result;
+  }
+
+  unref() {
+    this.connection.unref();
+  }
+
+  on(event, ...args) {
+    this.connection.on(event, ...args);
+  }
+
+  quit() {
+    this.closed = true;
+    if (this.connection) {
+      this.connection.end();
+    }
+    return Promise.resolve();
+  }
+}
+
+BeanstalkdClient.prototype.protocol = new BeanstalkdProtocol();
+
+commands.forEach(([command, expectation]) => BeanstalkdClient.addCommand(command, expectation));
+yamlCommands.forEach(([command, expectation]) => BeanstalkdClient.addYamlCommand(command, expectation));
+
+function makeCommand(command, writer, reader) {
+  let handler = function (...args) {
+    return this._command(command, args, writer, reader);
   };
 
   return handler;

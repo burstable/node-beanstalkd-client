@@ -38,6 +38,21 @@ beanstalkd.connect().then(function (beanstalkd) {
 All beanstalkd commands are implemented per the protocol.
 Method names are the same as beanstalk command names camelCased, list-tubes-watched becomes listTubesWatched.
 
+## Extending
+
+`Beanstalkd.prototype.protocol|beanstalkd.protocol` exposes the internal instance of `beanstalkd-protocol` used for command building and reply parsing.
+
+`Beanstalkd.addCommand(command, expectedResponse)` lets you add new commands.
+
+```js
+import Beanstald from 'beanstalkd';
+
+Beanstalkd.prototype.protocol.addType('key', String);
+Beanstalkd.prototype.protocol.addCommand('AUTH <key>\r\n');
+Beanstalkd.prototype.protocol.addReply('OK\r\n');
+Beanstalkd.addCommand('AUTH', 'OK');
+```
+
 ## Debugging
 
 Use `DEBUG=beanstalkd*` to enable verbose debugging.

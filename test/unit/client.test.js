@@ -1,4 +1,5 @@
 import BeanstalkdClient from 'client';
+import BeanstalkdProtocol from 'beanstalkd-protocol';
 import {expect} from 'chai';
 import Promise from 'bluebird';
 import sinon from 'sinon';
