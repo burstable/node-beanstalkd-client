@@ -5,7 +5,7 @@
   "main": "lib/client.js",
   "dependencies": {
     "babel-runtime": "^5.8.25",
-    "beanstalkd-protocol": "^0.2.3",
+    "beanstalkd-protocol": "^1.0.0",
     "bluebird": "^3.4.7",
     "debug": "^2.2.0",
     "js-yaml": "^3.4.2",
