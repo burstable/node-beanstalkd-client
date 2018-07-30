@@ -56,6 +56,7 @@ export default class BeanstalkdClient {
       connection.on('connect', () => {
         debug('connected to %s:%s', this.host, this.port);
         this.connection = connection;
+        this.closed = false;
         this.readQueue = new ReadQueue(this.connection);
         resolve(this);
       });
