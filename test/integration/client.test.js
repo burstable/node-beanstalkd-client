@@ -65,6 +65,12 @@ describe('BeanstalkdClient', function () {
       });
     });
 
+    it('should return tube stats', function () {
+      return this.client.statsTube('default').then((stats) => {
+        expect(stats['current-jobs-ready']).to.be.a.number;
+      });
+    });
+
     it('should be able to put and reserve a job', function () {
       let worker = new Client(host, port)
         , tube = Math.random().toString()
