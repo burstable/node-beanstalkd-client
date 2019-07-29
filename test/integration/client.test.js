@@ -102,6 +102,34 @@ describe('BeanstalkdClient', function () {
       });
     });
 
+    it('should be able to put and reserve a job with extended characters', function () {
+      let worker = new Client(host, port)
+        , tube = Math.random().toString()
+        , values = {};
+
+      values["extended_chars"] = "\xF0\x9F\x98\x81";
+
+      return worker.connect().then(() => {
+        return Promise.join(
+          this.client.use(tube),
+          worker.watch(tube).then(function () {
+            return worker.ignore('default');
+          })
+        );
+      }).then(() => {
+        return this.client.put(0, 0, 180, JSON.stringify(values)).then((putId) => {
+          return worker.reserveWithTimeout(0).spread((reserveId, body) => {
+            expect(putId.toString()).to.equal(reserveId.toString());
+            expect(JSON.parse(body.toString())).to.deep.equal(values);
+
+            return worker.destroy(putId);
+          });
+        });
+      }).finally(function () {
+        worker.quit();
+      });
+    });
+
     it('should be able to put a large job', function () {
       let worker = new Client(host, port)
         , tube = Math.random().toString()

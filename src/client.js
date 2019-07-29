@@ -82,7 +82,9 @@ export default class BeanstalkdClient {
 
     if (spec.args.indexOf('bytes') > -1) {
       let data = args.pop();
-      args.push(data.length);
+
+      let b = new Buffer(data);
+      args.push(b.length);
       args.push(data);
     }
 
