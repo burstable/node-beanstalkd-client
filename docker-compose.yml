@@ -7,4 +7,4 @@ client:
 
 beanstalkd:
   image: schickling/beanstalkd
-  command: beanstalkd -p 11300 -z 5000000
+  command: -p 11300 -z 5000000
